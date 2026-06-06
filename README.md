@@ -2,7 +2,7 @@
 
 > here you can find some Vulnerabilities known, feel free to add some by making a pr
 
-![cpu](https://media1.tenor.com/m/FmXs1N-CpCgAAAAd/cpu-cpu-kill.gif)
+![cpu](./cpu-cpu-kill.gif)
 
 - [Security and Vulnerabilities](#security-and-vulnerabilities)
   - [CPU Vuln](#cpu-vuln)
