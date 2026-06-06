@@ -36,26 +36,29 @@ Triggers speculative execution to access out-of-bounds memory by bypassing bound
 
 Manipulates and poisons the CPU's branch predictor to force software to speculatively execute code fragments known as "gadgets".
 
-- **How the attack works:**
-  - 1. Speculation the CPU makes a guess, Modern CPUs don’t wait for branches like:
+**How the attack works:**
 
-    ```c
-       if (x < array_size)
-       y = array[x];
-      ```
+1. Speculation (the CPU makes a guess)
 
-    Instead, they use a Branch Target Buffer (BTB) to predict:
+Modern CPUs don’t wait for branches like:
 
-    “This branch usually goes here”
-    “Jump to this function address next”
+```c
+if (x < array_size)
+    y = array[x];
+```
 
-    So the CPU:
+Instead, they use a Branch Target Buffer (BTB) to predict:
 
-    guesses the target
-    executes instructions speculatively
-    before it even knows if the guess was correct
+- “This branch usually goes here”
+- “Jump to this function address next”
 
-    If it guessed wrong → results are discarded but microarchitectural traces remain (cache).
+So the CPU:
+
+- guesses the target
+- executes instructions speculatively
+- before it even knows if the guess was correct
+
+If it guessed wrong → results are discarded but microarchitectural traces remain (cache).
 
 - **affected:**
   - Almost all modern high-performance CPU (Intel, AMD, ARM) that predict branches in code.
