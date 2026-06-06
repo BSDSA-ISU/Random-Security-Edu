@@ -27,6 +27,115 @@ Meltdown is a hardware vulnerability that affects how processors (CPUs) handle "
 
 Triggers speculative execution to access out-of-bounds memory by bypassing bounds-checking code tricking the CPU into reading memory it isn't supposed to, specifically within the same application's memory space.
 
+---
+
+**How the attack works:**
+
+**1. Speculation (CPU ignores the “wait, is this safe?” check):**
+
+Modern CPUs hate waiting for memory, so they do this:
+
+```c
+if (index < array_size)
+    value = array[index];
+```
+
+CPU behavior:
+
+- It predicts the condition is true
+- It starts executing array[index] before - confirming bounds
+- This is called speculative execution
+
+Why it works:
+
+- Branch results (true/false) are slow to compute
+- CPU guesses based on history (branch predictor)
+
+So even if:
+
+```c
+index >= array_size
+```
+
+the CPU may still temporarily run the “safe-looking” path.
+
+**2. Attack Injection (training the CPU to behave “wrongly” on purpose):**
+
+Now the attacker doesn’t poison branch targets (that’s v2).
+
+Instead they:
+
+- train the branch predictor + memory state
+
+Attacker repeatedly runs:
+
+```c
+for (i = 0; i < safe_size; i++)
+    access(array[i]);
+```
+
+CPU learns:
+
+- “bounds check is usually true → safe to proceed”
+
+Then attacker feeds a “bad index”:
+
+```c
+index = attacker_controlled_value; // huge number
+if (index < array_size)
+    value = array[index];
+```
+
+Even though condition is false:
+
+- CPU speculatively still executes array access
+- because it was “recently trained” to trust the branch
+
+**3. The data leakage (turning prediction into a side channel):**
+
+Even though the CPU later realizes:
+
+- “Oops, that was out-of-bounds, discard results”
+
+it already did something irreversible at micro-level:
+
+- it touched cache based on secret data
+
+**Typical Exploit Gadget:**
+```c
+secret = memory[array[index]];
+probe_array[secret * 4096] += 1;
+```
+
+What happens:
+
+- Out-of-bounds read leaks secret byte
+- Secret is used as an index into probe_array
+- That access loads a specific cache line
+
+So now cache contains a pattern like:
+
+| probe_array index | cached? |
+| ----------------- | ------- |
+| secret * 4096     | YES     |
+
+**Attacker measures it:**
+
+```c
+for (i = 0; i < 256; i++) {
+    time access(probe_array[i * 4096]);
+}
+```
+
+- Fast access = cached = secret value
+- Slow access = not used
+
+Boom:
+
+- secret reconstructed one byte at a time
+
+---
+
 - **affected:**
   - Almost all modern high-performance CPU (Intel, AMD, ARM) that predict branches in code.
 - **Patch:**
@@ -35,6 +144,8 @@ Triggers speculative execution to access out-of-bounds memory by bypassing bound
 ### Branch Target Injection - CVE-2017-5715 (Spectre V2)
 
 Manipulates and poisons the CPU's branch predictor to force software to speculatively execute code fragments known as "gadgets".
+
+---
 
 **How the attack works:**
 
@@ -60,7 +171,69 @@ So the CPU:
 
 If it guessed wrong → results are discarded but microarchitectural traces remain (cache).
 
-**2. the attack**
+**2. Attack Injection (poisoning the predictor):**
+
+Attacker repeatedly executes a harmless branch:
+
+```c
+if (index < safe_limit)
+    call victim_function();
+```
+
+CPU learns:
+
+`“Oh, this branch usually goes to victim_function”`
+
+Now attacker messes with prediction state by:
+
+- using same virtual addresses / aliasing patterns
+- or cross-process / cross-VM branch prediction collisions
+- or indirect branch gadgets
+
+So when real victim code runs, CPU predicts:
+
+`“Jump to attacker-controlled gadget instead”`
+
+Even though actual control flow says NO.
+
+**3. Data Leakage (the real damage):**
+
+Now the victim runs:
+
+```c
+indirect_call(secret_index);
+```
+
+CPU:
+
+- mispredicts jump target
+- executes attacker-chosen gadget speculatively
+
+That gadget often does something like:
+
+```c
+value = secret_data[secret_index];
+cache_probe_array[value * 4096] = 1;
+```
+
+Important:
+
+- secret is NEVER architecturally returned
+- but it touches cache lines based on secret value
+
+Then attacker measures timing:
+
+```c
+for i in probe_array:
+    measure access time
+
+```
+
+Fast access → cached → means:
+
+- `“that index was used → secret value leaked”`
+
+---
 
 - **affected:**
   - Almost all modern high-performance CPU (Intel, AMD, ARM) that predict branches in code.
