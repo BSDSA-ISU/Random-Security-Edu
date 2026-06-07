@@ -4,12 +4,16 @@
 
 ![cpu](https://media1.tenor.com/m/N80hQiCKCAUAAAAC/cpu-i7.gif)
 
+**Here are the list of known vuln:**
+
 - [Security and Vulnerabilities](#security-and-vulnerabilities)
   - [CPU Vuln](#cpu-vuln)
     - [Rogue Data Cache Load - CVE-2017-5754 (MELTDOWN)](#rogue-data-cache-load---cve-2017-5754-meltdown)
     - [Bounds Check Bypass - CVE-2017-5753 (Spectre V1)](#bounds-check-bypass---cve-2017-5753-spectre-v1)
     - [Branch Target Injection - CVE-2017-5715 (Spectre V2)](#branch-target-injection---cve-2017-5715-spectre-v2)
     - [Speculative Store Bypass - CVE-2018-3639 (Spectre V4)](#speculative-store-bypass---cve-2018-3639-spectre-v4)
+  - [Software](#software)
+    - [Log4shell (CVE-2021-44228)](#log4shell-cve-2021-44228)
 
 ## CPU Vuln
 
@@ -102,6 +106,7 @@ it already did something irreversible at micro-level:
 - it touched cache based on secret data
 
 **Typical Exploit Gadget:**
+
 ```c
 secret = memory[array[index]];
 probe_array[secret * 4096] += 1;
@@ -240,6 +245,8 @@ Fast access → cached → means:
 - **Patch:**
   - **Retpolines (Return Trampolines)**: This is a clever Linux/GCC technique that prevents the CPU from being "trained" to jump to malicious locations. It basically confuses the CPU’s branch predictor so it doesn't know where to guess, forcing it to wait for the actual, verified address.
   - **IBRS/IBPB (Indirect Branch Restricted Speculation/Prediction Barrier):** hardware-level CPU security mechanisms designed to mitigate Branch Target Injection (also known as Spectre v2) attacks. They prevent malicious code from hijacking a processor's speculative execution.
+- **poc/exploitation concept:**
+  - [Anton-Cao/spectrev2-poc](https://github.com/Anton-Cao/spectrev2-poc)
 
 ### Speculative Store Bypass - CVE-2018-3639 (Spectre V4)
 
@@ -253,3 +260,14 @@ SSB is a hardware security vulnerability affecting modern Intel, AMD, and ARM pr
   - modern Intel, AMD, and ARM processors
 - **mitigations:**
   - Speculative Store Bypass Disable (SSBD)
+- **poc/exploitation:**
+  - [coolcatlee/Speculative-Code-Store-Bypass-POC](https://github.com/coolcatlee/Speculative-Code-Store-Bypass-POC)
+
+---
+
+## Software
+
+### Log4shell (CVE-2021-44228)
+
+Log4Shell is a vulnerability reported in November 2021 in Log4j, a popular Java logging framework, involving arbitrary code execution and exploited as a zero-day vulnerability.
+
